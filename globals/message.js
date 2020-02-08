@@ -16,7 +16,11 @@
 
 'use strict';
 
+import { bindEvent } from "./../../../include/event.js"
+
 /** @typedef {Object<string, Array<Function>>} MessageHandlers */ var MessageHandlers;
+
+const defaultExcludeList = [ 'evPing', 'evPong' ];
 
 export class MessagePool {
 	/**
@@ -29,7 +33,7 @@ export class MessagePool {
 		/** @type {MessageHandlers} */
 		this.oMessagesOnce = {};
 		/** @type {Array<string>} */
-		this.aExcludeLog = [];
+		this.aExcludeLog = /** @type {Array} */ ( platform.clone(defaultExcludeList) );
 	
 		this.sName = sName || "Unknown";
 
@@ -107,7 +111,7 @@ export class MessagePool {
 	 * @param {...string} va_args (Optional) list of event names
 	 */
 	excludeLog(bReset, va_args) {
-		if (bReset) this.aExcludeLog = [];
+		if (bReset) this.aExcludeLog = /** @type {Array} */ ( platform.clone(defaultExcludeList) );
 		let args = Array.prototype.slice.call(arguments, 1);
 		for (let iIndex = 0; iIndex < args.length; iIndex++) {
 			if (this.aExcludeLog.indexOf(args[iIndex]) < 0)
@@ -246,7 +250,7 @@ export class MessagePool {
 		let oPingPong = null;
 		let oMessagePool = this;
 		let fnPingPong = function() {
-			oMessagePool.recv('evPing');
+			oMessagePool.send('evPing');
 			oPingPong = setTimeout(fnPingPong, 1000);
 		}
 		this.registerOnce('evPong', function() {
