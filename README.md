@@ -1,4 +1,4 @@
-# Progressive Web Application Library (Lite Version)
+# Messaging PWA Library 
 
 This is library for a fork project of [PWA](https://github.com/SergioRando/PWA)
 
@@ -47,7 +47,7 @@ _Note: you can't copy link to new repo from GitHub project page, because its emp
 3. Add ***PWA Library Template*** repository as an Upstream Remote
 ```
 cd {NewRepo}
-git remote add upstream https://github.com/SergioRando/js-lite.git
+git remote add upstream https://github.com/SergioRando/js-message.git
 ```
 4. Update your fork
 ```
@@ -69,7 +69,7 @@ _Note: don't forget to change README.md_
 ## 6. Prepare
 
 1. Remove Template block from README.md
-2. Replace all 'js-lite' with '{NewRepo}'
+2. Replace all 'js-message' with '{NewRepo}'
 3. Edit NOTICE
 
 # Update
@@ -118,7 +118,7 @@ String Replacements
 
 ```
 cd {Project Path}/src/lib
-git submodule add https://github.com/SergioRando/js-lite.git
+git submodule add https://github.com/SergioRando/js-message.git
 ```
 _Note: don't forget to add notice about library license to yours project_
 
@@ -127,10 +127,10 @@ String Replacements
 * _{Project Path}_ - path to drive with symlinks support (**NOT FAT32/NTFS/exFAT**)
 ```
 cd {Project Path}/src/lib
-git submodule deinit js-lite
-git rm js-lite
-git commit -m "Removed submodule js-lite"
+git submodule deinit js-message
+git rm js-message
+git commit -m "Removed submodule js-message"
 cd {Project Path}
-rm -rf ./git/modules/src/lib/js-lite
+rm -rf ./git/modules/src/lib/js-message
 ```
 _Note: be careful executing **rm** commands! It delete files permanenlty!_
