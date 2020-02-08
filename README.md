@@ -2,7 +2,9 @@
 
 This is library for a fork project of [PWA](https://github.com/SergioRando/PWA)
 
-Full version can be found at [PWA Library](https://github.com/SergioRando/PWA-Library)
+Simple MessageLoop realisation for interframe communication
+
+Allows send and receive messages between iFrame and parent window
 
 # Template
 Read full installation process before executing any command
