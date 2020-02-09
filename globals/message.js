@@ -20,7 +20,53 @@ import { bindEvent } from "./../../../include/event.js"
 
 /** @typedef {Object<string, Array<Function>>} MessageHandlers */ var MessageHandlers;
 
-const defaultExcludeList = [ 'evPing', 'evPong' ];
+const evPing = 'evPing';
+const evPong = 'evPong';
+
+const defaultExcludeList = [ evPing, evPong ];
+
+class Synchronization {
+	/**
+	 * @param {MessagePool} oMessagePool
+	 * @param {(HTMLIFrameElement | Window | null)} oTarget (Optional) target message pool Window or iFrame or null
+	 * @param {Function} fnCallback
+	 */
+	constructor(oMessagePool, oTarget, fnCallback) {
+		/** @private */ this.oMessagePool = oMessagePool;
+		/** @private */ this.oTarget = oTarget;
+		/** @private */ this.fnCallback = fnCallback;
+		/** @private */ this.evPong = this.onPong.bind(this);
+		/** @private */ this.evSync = this.onSync.bind(this);
+		/** @private @type {number | null} */ this.iSync = null;
+		
+		this.oMessagePool.registerOnce(evPong, this.evPong);
+		this.onSync();
+	}
+
+	/**
+	 * @private
+	 */
+	onSync() {
+		this.oMessagePool.send(this.oTarget, evPing);
+		this.iSync = setTimeout(this.evSync, 1000);
+	}
+
+	/**
+	 * @private
+	 */
+	onPong() {
+		clearTimeout(this.iSync);
+		this.fnCallback();
+	}
+
+	cancel() {
+		if (this.iSync !== null) {
+			clearTimeout(this.iSync);
+			this.oMessagePool.unregister(evPong, this.evPong);
+			this.iSync = null;
+		}
+	}
+}
 
 export class MessagePool {
 	/**
@@ -34,17 +80,13 @@ export class MessagePool {
 		this.oMessagesOnce = {};
 		/** @type {Array<string>} */
 		this.aExcludeLog = /** @type {Array} */ ( platform.clone(defaultExcludeList) );
-	
 		this.sName = sName || "Unknown";
+		this.fnLog = fnLog || function() {};
+		this.bReady = false;
 
 		/** @private */
 		this.evPing = this.onPing.bind(this);
-
-		this.fnLog = fnLog || function() {};
-
-		this.bReady = false;
-
-		/** @type {(Window | null)} */ this.oTarget = null;
+		this.register('evPing', this.evPing);
 	}
 
 	/**
@@ -147,7 +189,7 @@ export class MessagePool {
 		if (this.bReady !== true) {
 			this.messageLog(aMessage, 'SKIP ');
 		} else {
-			this.callMessage.apply(this, aMessage);
+			this.recv.apply(this, aMessage);
 		}
 	}
 	
@@ -157,7 +199,7 @@ export class MessagePool {
 	 * @param {string} sMessage 
 	 * @param  {...*} va_args (Optional) message data passed to message handler
 	 */
-	callMessage(sMessage, va_args) {
+	recv(sMessage, va_args) {
 		let aMessage = Array.prototype.slice.call(arguments, 1);
 		if (this.aExcludeLog.indexOf(sMessage) < 0) {
 			let aMessage = Array.prototype.slice.call(arguments, 1);
@@ -182,39 +224,35 @@ export class MessagePool {
 	}
 
 	/**
-	 * Receive message
+	 * Post message to current Message Pool
 	 * @param {string} sMessage
 	 * @param {...*} va_args (Optional) message data passed to message handler
 	 */
-	recv(sMessage, va_args) {
+	post(sMessage, va_args) {
 		let aMessage = Array.prototype.slice.call(arguments, 0);
 		platform.postMessage(JSON.stringify(aMessage), '*');
 	}
 
-	/**
-	 * Set message pool target
-	 * @param {(HTMLIFrameElement | Window)=} oTarget (Optional) target message pool Window or iFrame
-	 */
-	target(oTarget) {
-		if (oTarget === undefined)
-			this.oTarget = null;
-		else if (oTarget instanceof HTMLIFrameElement)
-			this.oTarget = oTarget.contentWindow;
-		else
-			this.oTarget = oTarget;
-	}
-
 	/** 
-	 * Send message
+	 * Send message to target Message Pool
+	 * @param {(HTMLIFrameElement | Window | null)} oTarget (Optional) target message pool Window or iFrame or null
 	 * @param {string} sMessage
 	 * @param {...*} va_args (Optional) message data passed to message handler
 	 */
-	send(sMessage, va_args) {
-		let aMessage = Array.prototype.slice.call(arguments, 0);
-		if (this.oTarget === null)
+	send(oTarget, sMessage, va_args) {
+		/** @type {(Window | null)} */ let oWindow;
+		if (oTarget === null)
+			oWindow = platform.parent;
+		else if (oTarget instanceof HTMLIFrameElement)
+			oWindow = oTarget.contentWindow;
+		else
+			oWindow = oTarget;
+
+		let aMessage = Array.prototype.slice.call(arguments, 1);
+		if (oWindow === null)
 			this.messageLog(aMessage, 'DROP ');
 		else
-			this.oTarget.postMessage(JSON.stringify(aMessage), '*');
+			oWindow.postMessage(JSON.stringify(aMessage), '*');
 	}
 	
 	/**
@@ -232,32 +270,28 @@ export class MessagePool {
 
 	/**
 	 * Log message to console
-	 * @param {*} oMessage
+	 * @param {*=} oMessage
 	 */
 	log(oMessage) {
-		console.log('[' + this.sName + ']: ' + oMessage);
+		let aLog = [ '[' + this.sName + ']: ' ];
+		if (oMessage !== undefined) aLog.push(oMessage);
+		this.fnLog.apply(null, aLog);
 	}
 
 	/**
 	 * @private
 	 */
 	onPing() {
-		this.recv('evPong');
+		this.post('evPong');
 	}
 
-	/** @param {Function} fnCallback */
-	synchronize(fnCallback) {
-		let oPingPong = null;
-		let oMessagePool = this;
-		let fnPingPong = function() {
-			oMessagePool.send('evPing');
-			oPingPong = setTimeout(fnPingPong, 1000);
-		}
-		this.registerOnce('evPong', function() {
-			clearTimeout(oPingPong);
-			fnCallback();
-		});
-		this.register('evPing', this.evPing);
-		fnPingPong();
+	/**
+	 * Synchronize Message Pools (start communication)
+	 * @param {(HTMLIFrameElement | Window | null)} oTarget (Optional) target message pool Window or iFrame or null
+	 * @param {Function} fnCallback
+	 * @returns {Synchronization} cancelable synchronization object
+	 */
+	synchronize(oTarget, fnCallback) {
+		return new Synchronization(this, oTarget, fnCallback);
 	}
 }
