@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Sergio Rando <segio.rando@yahoo.com>
+ * Copyright 2000-2020 Sergio Rando <segio.rando@yahoo.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ const defaultExcludeList = [ evPing, evPong ];
 
 class Synchronization {
 	/**
-	 * @param {MessagePool} oMessagePool
+	 * @param {cMessagePool} oMessagePool
 	 * @param {(HTMLIFrameElement | Window | null)} oTarget (Optional) target message pool Window or iFrame or null
 	 * @param {Function} fnCallback
 	 */
@@ -68,25 +68,54 @@ class Synchronization {
 	}
 }
 
-export class MessagePool {
+/**
+ * @private
+ * @param {Window} oTarget
+ * @param {string} sMessage 
+ */
+const postMessage = (platform['postMessage'] !== undefined) ?
 	/**
-	 * @param {string=} sName (Optional) message pool name
-	 * @param {Function=} fnLog (Optional) log function
+	 * @private
+	 * @param {Window} oTarget
+	 * @param {string} sMessage 
 	 */
-	constructor(sName, fnLog) {
+	function(oTarget, sMessage) {
+		oTarget.postMessage(sMessage, '*');
+	} :
+	/**
+	 * @private
+	 * @param {Window} oTarget
+	 * @param {string} sMessage 
+	 */
+	async function(oTarget, sMessage) {
+		MessagePool.onMessage({'data': sMessage});
+	};
+
+class cMessagePool {
+	constructor() {
 		/** @type {MessageHandlers} */
 		this.oMessages = {};
 		/** @type {MessageHandlers} */
 		this.oMessagesOnce = {};
 		/** @type {Array<string>} */
 		this.aExcludeLog = /** @type {Array} */ ( platform.clone(defaultExcludeList) );
-		this.sName = sName || "Unknown";
-		this.fnLog = fnLog || function() {};
+		this.sName = "MessagePool";
+		this.fnLog = console.log;
 		this.bReady = false;
 
 		/** @private */
 		this.evPing = this.onPing.bind(this);
-		this.register('evPing', this.evPing);
+		this.register(evPing, this.evPing);
+	}
+
+	/**
+	 * Initialize MessagePool name and log function
+	 * @param {string} sName message pool name
+	 * @param {Function=} fnLog (Optional) log function
+	 */
+	init(sName, fnLog) {
+		this.sName = sName;
+		this.fnLog = fnLog || function() {};
 	}
 
 	/**
@@ -181,8 +210,8 @@ export class MessagePool {
 
 	/**
 	 * Message event from message queue
-	 * @private
-	 * @param {MessageEvent} event
+	 * @protected
+	 * @param {MessageEvent | {data: string}} event
 	 */
 	onMessage(event) {
 		let aMessage = /** @type {Array} */ ( JSON.parse(event.data) );
@@ -230,7 +259,7 @@ export class MessagePool {
 	 */
 	post(sMessage, va_args) {
 		let aMessage = Array.prototype.slice.call(arguments, 0);
-		platform.postMessage(JSON.stringify(aMessage), '*');
+		postMessage(platform, JSON.stringify(aMessage));
 	}
 
 	/** 
@@ -252,7 +281,7 @@ export class MessagePool {
 		if (oWindow === null)
 			this.messageLog(aMessage, 'DROP ');
 		else
-			oWindow.postMessage(JSON.stringify(aMessage), '*');
+			postMessage(oWindow, JSON.stringify(aMessage));
 	}
 	
 	/**
@@ -282,7 +311,7 @@ export class MessagePool {
 	 * @private
 	 */
 	onPing() {
-		this.post('evPong');
+		this.post(evPong);
 	}
 
 	/**
@@ -295,3 +324,5 @@ export class MessagePool {
 		return new Synchronization(this, oTarget, fnCallback);
 	}
 }
+
+export const MessagePool = new cMessagePool();
