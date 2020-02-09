@@ -119,6 +119,16 @@ class cMessagePool {
 	}
 
 	/**
+	 * Check message handler registeration
+	 * @param {string} sMessage
+	 * @returns {boolean}
+	 */
+	has(sMessage) {
+		if (this.oMessages[sMessage] === undefined) return false;
+		return (this.oMessages[sMessage].length > 0) || (this.oMessagesOnce[sMessage].length > 0);
+	}
+
+	/**
 	 * Register message handler
 	 * @param {string} sMessage 
 	 * @param {Function} fnHandler
@@ -302,7 +312,7 @@ class cMessagePool {
 	 * @param {*=} oMessage
 	 */
 	log(oMessage) {
-		let aLog = [ '[' + this.sName + ']: ' ];
+		let aLog = [ '[' + this.sName + ']:' ];
 		if (oMessage !== undefined) aLog.push(oMessage);
 		this.fnLog.apply(null, aLog);
 	}
