@@ -106,6 +106,8 @@ class cMessagePool {
 		/** @private */
 		this.evPing = this.onPing.bind(this);
 		this.register(evPing, this.evPing);
+
+		bindEvent(platform, 'message', this.onMessage.bind(this));
 	}
 
 	/**
@@ -116,6 +118,22 @@ class cMessagePool {
 	init(sName, fnLog) {
 		this.sName = sName;
 		this.fnLog = fnLog || function() {};
+	}
+
+	/**
+	 * Check message pool ready to process messages
+	 * @returns {boolean}
+	 */
+	isReady() {
+		return this.bReady;
+	}
+
+	/**
+	 * Mark message pool as ready to process messages
+	 * @param {boolean=} bReady (Optional) false - to stop message processing (all incoming messages will be lost)
+	 */
+	ready(bReady) {
+		this.bReady = (bReady === undefined) ? true : bReady;
 	}
 
 	/**
@@ -225,16 +243,11 @@ class cMessagePool {
 	 */
 	onMessage(event) {
 		let aMessage = /** @type {Array} */ ( JSON.parse(event.data) );
-		if (this.bReady !== true) {
-			this.messageLog(aMessage, 'SKIP ');
-		} else {
-			this.recv.apply(this, aMessage);
-		}
+		this.recv.apply(this, aMessage);
 	}
 	
 	/**
-	 * Execute local message handler
-	 * @private
+	 * Execute local message handler (without message queue)
 	 * @param {string} sMessage 
 	 * @param  {...*} va_args (Optional) message data passed to message handler
 	 */
@@ -294,19 +307,6 @@ class cMessagePool {
 			postMessage(oWindow, JSON.stringify(aMessage));
 	}
 	
-	/**
-	 * Mark message pool as ready to process messages
-	 * @param {boolean=} bReady (Optional) false - to stop message processing (all incoming messages will be lost)
-	 */
-	ready(bReady) {
-		if (this.bReady !== bReady) {
-			this.bReady = bReady;
-			if (bReady) {
-				bindEvent(platform, 'message', this.onMessage.bind(this));
-			}
-		}
-	}
-
 	/**
 	 * Log message to console
 	 * @param {*=} oMessage
