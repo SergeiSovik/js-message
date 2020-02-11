@@ -100,7 +100,7 @@ class cMessagePool {
 		/** @type {Array<string>} */
 		this.aExcludeLog = /** @type {Array} */ ( platform.clone(defaultExcludeList) );
 		this.sName = "MessagePool";
-		this.fnLog = console.log;
+		this.fnLog = console.log.bind(console);
 		this.bReady = false;
 
 		/** @private */
